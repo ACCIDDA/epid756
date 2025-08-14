@@ -1,0 +1,286 @@
+---
+title: "Agent Based Modeling for Infectious Disease Epidemiology"
+format: revealjs
+embed-resources: true
+---
+
+## What is an agent?
+
+```{r, echo=F}
+library(tidyverse)
+
+```
+
+An agent is a representation of a single individual which has:
+
+- state
+  - e.g., susceptible, infectious, recovered
+- behavior
+  - governs transitions between states and can be (must be) state dependent
+  
+## An Example
+
+```{r, echo=T}
+set.seed(12345)
+  agents <- tibble(id = 1:200,
+                   state="S",
+                   location=sample(c("home","office"), 200, replace=T, 
+                                   prob = c(.5, .5)),
+                   HH = sort(sample(1:50, 200, replace=T)),
+                   office = sample(1:3, 200, replace = T))
+
+  agents$state[1] <- "I"
+
+agents
+```
+
+## What is an agent based model?
+
+- An agent based model of infectious disease is one where the disease process
+is driven by agent interactions.
+- The line between an agent based model and an individual based stochastic 
+model can be blurry.
+- In general when someone talks about a model as "agent based" one or both 
+of these is true:
+  - individuals have reasonably detailed attributes which govern the transmission process
+  - there are aspects of an individuals behavior which are determined by their state (e.g., staying home when sick)
+  
+## Example 1: Not an agent based model?
+
+We can run a stochastic SIR model on our agents ignoring structure.
+
+```{r, echo=TRUE}
+
+set.seed(12345)
+
+epi_agents<- agents
+
+## To keep it simple we will assume an exactly 1 day infectious 
+## a 0.025 that anyone infects anyone else, and only track infected
+I <- rep(0,25)
+
+for (i in 1:25) {
+  I[i] <- sum(epi_agents$state=="I")
+  epi_agents <- epi_agents %>%
+    mutate(state = ifelse(state=="S",
+                          ifelse(rbinom(n(),1,1-(1-.01)^I[i]),"I","S"),
+                          "R"))
+}
+
+
+HH_dists <- epi_agents%>%group_by(HH) %>%
+  summarize(I = sum(state=="R"), N=n(), AR=I/N) %>%
+  ungroup()
+```
+## Example 1: Not an agent based model?
+```{r}
+
+plot(I, type="l")
+
+table(epi_agents$state)
+```
+
+
+## Example 1: Not an agent based model?
+```{r}
+
+HH_dists %>% ggplot(aes(x=AR)) + geom_histogram(bins=10)
+```
+
+
+## Example 2: Structured transmission
+
+We can make this model take advantage of structure by having people move
+back and forth from home and office and only infect people where they are at.
+
+```{r, echo=TRUE}
+
+set.seed(12345)
+
+epi_agents2<- agents
+
+## Give a 25% chance of infecting any given HH member and a 10%
+## chance of infecting someone at the office.
+I2 <- rep(0,25)
+I2_1 <- rep(0,25)
+I2_2 <- rep(0,25)
+I2_3 <- rep(0,25)
+
+for (i in 1:25) {
+  I2[i] <- sum(epi_agents2$state=="I")
+  I2_1[i] <- sum(epi_agents2[epi_agents2$office==1,]$state=="I")
+  I2_2[i] <- sum(epi_agents2[epi_agents2$office==2,]$state=="I")
+  I2_3[i] <- sum(epi_agents2[epi_agents2$office==3,]$state=="I")
+  
+  ##do infectious process in homes
+  epi_agents2 <- epi_agents2 %>% group_by(HH) %>%
+    mutate(nw_I = (state=="S") * 
+             (location=="home") * 
+             rbinom(n(),1, 1-(1-.25)^sum(state=="I" & location == "home"))) %>%
+    ungroup()
+  
+
+  
+  ##do infectious process in office
+  epi_agents2 <- epi_agents2 %>% group_by(office) %>%
+    mutate(nw_I = nw_I + (state=="S") * 
+             (location=="office") * 
+             rbinom(n(),1, 1-(1-.1)^sum(state=="I" & location == "office")))%>%
+    ungroup()
+  
+  ##update locations and states
+  epi_agents2 <- epi_agents2 %>%
+    mutate(state=ifelse(state=="I","R", ifelse(nw_I==1,"I",state)),
+           location = ifelse(runif(n())>0.5,"home","office")) %>%
+           #location = sample(c("home","office"), 200, replace=T, 
+          #                         prob = c(.5, .5))) %>%
+    
+    select(-nw_I)
+  
+}
+
+
+HH_dists2 <- epi_agents2%>%group_by(HH) %>%
+  summarize(I = sum(state=="R"), N=n(), AR=I/N) %>%
+  ungroup()
+
+```
+
+## Example 2: Structured transmission
+```{r}
+
+plot(I2, type="l")
+
+table(epi_agents2$state)
+```
+
+## Example 2: Structured transmission
+```{r}
+
+plot(I2_1, type="l", col="blue")
+lines(I2_2, col="red")
+lines(I2_3, col="green")
+
+table(epi_agents2$state, epi_agents2$office)
+```
+
+## Example 2: Structured transmission
+```{r}
+
+HH_dists2 %>% ggplot(aes(x=AR)) + geom_histogram(bins=10)
+```
+
+## Example 3: Differential behavior
+
+Now let's extend this model to make people who are sick be 15% less likely to be in "the office".
+
+
+```{r, echo=TRUE}
+
+set.seed(12345)
+
+epi_agents3<- agents
+
+## Give a 25% chance of infecting any given HH member and a 10%
+## chance of infecting someone at the office.
+I3 <- rep(0,25)
+I3_1 <- rep(0,25)
+I3_2 <- rep(0,25)
+I3_3 <- rep(0,25)
+
+for (i in 1:25) {
+  I3[i] <- sum(epi_agents3$state=="I")
+  I3_1[i] <- sum(epi_agents3[epi_agents2$office==1,]$state=="I")
+  I3_2[i] <- sum(epi_agents3[epi_agents2$office==2,]$state=="I")
+  I3_3[i] <- sum(epi_agents3[epi_agents2$office==3,]$state=="I")
+  
+  ##do infectious process in homes
+  epi_agents3 <- epi_agents3 %>% group_by(HH) %>%
+    mutate(nw_I = (state=="S") * 
+             (location=="home") * 
+             rbinom(n(),1, 1-(1-.25)^sum(state=="I" & location == "home"))) %>%
+    ungroup()
+  
+
+  
+  ##do infectious process in office
+  epi_agents3 <- epi_agents3 %>% group_by(office) %>%
+    mutate(nw_I = nw_I + (state=="S") * 
+             (location=="office") * 
+             rbinom(n(),1, 1-(1-.1)^sum(state=="I" & location == "office")))%>%
+    ungroup()
+  
+  ##update locations and states
+  epi_agents3 <- epi_agents3 %>%
+    mutate(state=ifelse(state=="I","R", ifelse(nw_I==1,"I",state)),
+           location = ifelse(runif(n())>(0.5-.15*(state=="I")),"home",
+                             "office")) %>%
+    
+    select(-nw_I)
+  
+}
+
+
+HH_dists3 <- epi_agents3%>%group_by(HH) %>%
+  summarize(I = sum(state=="R"), N=n(), AR=I/N) %>%
+  ungroup()
+
+```
+
+## Example 3: Differential behavior
+
+```{r}
+
+plot(I3, type="l")
+
+table(epi_agents3$state)
+```
+
+## Example 3: Differential behavior
+
+```{r}
+
+plot(I3_1, type="l", col="blue")
+lines(I3_2, col="red")
+lines(I3_3, col="green")
+
+table(epi_agents3$state, epi_agents3$office)
+```
+
+## Example 3: Differential behavior
+
+```{r}
+
+HH_dists3 %>% ggplot(aes(x=AR)) + geom_histogram(bins=10)
+```
+## Why agent based model?
+
+- Population/contact structure is important and heterogenous.
+- Behavior changes with disease state or in specific ways with policy.
+- Agent state is very complex.
+- We want to test the ability of coarser methods to test finer detail.
+- Apparent realism and descriptive power.
+- We are interested in emergent behavior.
+
+## Examples of agent based models
+
+- [Containing H5N1 emergence](https://www.nature.com/articles/nature04017)
+- [HIV](https://docs.idmod.org/projects/emodpy-hiv/en/latest/emod/hiv-model-overview.html)
+- [GLEAM](https://www.gleamproject.org/)
+- [FRED](https://fred.publichealth.pitt.edu/pennsylvania_measles)
+- [A model of "civil violence"](https://www.pnas.org/doi/full/10.1073/pnas.092080199)
+
+## Here be dragons...
+
+Agent based models have several draw backs
+
+- Complexity and computational cost (and their intersection)
+- Parameterization from population level observations
+- Illusionary explanations 
+  - one phenomena/many explanations
+- Hidden latent assumptions
+- Loss of descriptive power
+
+
+
+

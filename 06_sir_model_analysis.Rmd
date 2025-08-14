@@ -1,0 +1,88 @@
+---
+author: "your name"
+title: "SIR model analysis"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: show
+    highlight: tango
+    toc: yes
+    toc_depth: 5
+    toc_float: yes
+---
+
+### Review of SIR epidemic model
+
+We will simulate an SIR epidemic in our model world, in which people are susceptible to infection, become infected and infectious, and recover from infection.
+
+```{r message=FALSE, warning=FALSE}
+library(deSolve) 
+library(tidyverse)
+source("06_sir_function.R")
+```
+
+#### Specify parameters and initialize population
+
+In our model world, an acute, immunizing infection is introduced into a population. On average, a person is infected and infectious for 5 days before recovery. During that time, the effective contact rate per day is 2. We will investigate epidemic dynamics over a 60-day period, during which time we can assume births and deaths are negligible (near zero).
+
+```{r}
+params <- c(beta = 2, gamma = 1/5, mu = 0) 
+states <- c(S = 999, I = 1, R = 0) 
+times <- seq(from = 1, to = 60, by = 1)
+```
+
+#### Run simulation
+We simulate the population by solving the system of differential equations for the given states, times, and parameters.
+```{r}
+model <- as.data.frame(
+  ode(y = states, times = times, func = sir_model, parms = params)
+) 
+```
+
+#### Analyze output
+
+Plot the population count in each compartment over the 60-day period.
+
+```{r}
+model %>% 
+  pivot_longer(cols = c(S, I, R), names_to = "compartment", values_to = "count") %>% 
+  mutate(compartment = factor(compartment,
+                              levels = c("S", "I", "R"), 
+                              labels = c("Susceptible", "Infected", "Recovered"))) %>% 
+  ggplot(aes(x = time, y = count, color = compartment)) +
+  geom_line() + 
+  labs(x = "Days", y = "Count", color = "Compartment") +
+  theme_classic() 
+```
+
+Verify that the population is in steady state, explore the distribution of the prevalence of infection, and determine when infection prevalence peaks.
+
+```{r}
+model <- model %>% 
+  mutate(N = S+I+R,
+         prevalence = I/N) 
+
+summary(model)
+
+model %>% 
+  arrange(-prevalence) %>% 
+  slice(1)
+```
+
+### Your turn
+
+What happens when you increase the number of people initially infected?
+```{r}
+# states <- c(S = , I = , R = ) 
+```
+
+What is the basic reproduction number (R0) for this SIR model? What happens when you reduce R0 to be less than 1?
+```{r}
+# hint: R0 = beta/(mu+gamma) 
+# params <- c(beta = , gamma = , mu = ) 
+```
+
+How might you rerun the model simulation to examine output resulting from different effective contact rates? Keep everything else the same and avoid copying and pasting the same code.
+```{r}
+# multiple approaches possible!
+```

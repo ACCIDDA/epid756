@@ -1,0 +1,48 @@
+---
+title: "Intro to RMarkdown"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    highlight: tango
+    toc: yes
+    toc_depth: 5
+    toc_float: yes
+--- 
+
+### Example heading 1
+#### Example subheading 1
+
+This is where you can write text with simple formatting:
+
+1. **Example of bolded ordered list:** This text is no longer bolded.
+2. *Now italicized:* No longer italicized.
+
+* An unordered bullet point.
+* Another one
+
+Alright, it's time to embed some R code... 
+
+`r paste("The time is", Sys.time())`
+
+```{r}
+# make a code chunk with three back ticks followed by an 'r' in braces {}
+x <- rnorm(n = 100, mean = 10, sd = 5)
+summary(x)
+hist(x)
+```
+
+### Example heading 2
+#### Example subheading 2
+
+We can also read in the same simulated dataset, run the same code and embed Table 1 to share with collaborators.
+```{r}
+df <- readRDS(file.path("data", "simdata.rds"))
+# load package (already installed) in order to use CreateTableOne function
+library(tableone)
+CreateTableOne(data = df,
+               vars = c("age", "sex", "health_seek", "comorbid", "dx", "died"),
+               strata = "vax",
+               factorVars = c("health_seek", "comorbid", "dx", "died"),
+               test = FALSE)
+```

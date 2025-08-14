@@ -1,0 +1,60 @@
+---
+title: "Chain Binomial Models"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE, message=F}
+source("10_ChainBinomial_functions.R")
+library(tidyverse)
+```
+
+First lets simulate some household data!
+
+```{r}
+
+dat <- hh_sim(n = 5000, p = 0.1, max_size = 4, summarize = TRUE)
+
+```
+
+Now lets look at the distribution of final sizes.
+
+```{r}
+ggplot(dat) +
+  geom_bar(aes(x = num_inf), stat = "count") +
+  facet_wrap(~hh_size)
+
+```
+
+Now let's find the MLE for p.
+
+```{r, warning=FALSE, message=F}
+p_seq <- seq(from = 0.005, to = 0.2, by = 0.005)
+llik <- numeric(length(p_seq))
+
+for(i  in 1:length(p_seq)) {
+  llik[i] <- compute_likelihood(dat, p_seq[i])
+}
+
+# Log likelihood scale
+plot(x = p_seq, y = llik, type = "l")
+abline(v = p_seq[which.max(llik)], col = "red", lty = 2)
+p_seq[which.max(llik)]
+
+# Likelihood scale
+plot(x = p_seq, y = exp(llik-max(llik)), type = "l")
+abline(v = p_seq[which.max(llik)], col = "red", lty = 2)
+
+```
+Or you can use the optimize function.
+
+```{r, warning=FALSE, message=F}
+optimize(compute_likelihood, interval = c(0,1), maximum = TRUE, x = dat)
+
+```
+
+
+

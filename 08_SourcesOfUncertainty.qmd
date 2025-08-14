@@ -1,0 +1,320 @@
+---
+title: "Sources of Uncertainty in Infectious Disease Modeling"
+format: revealjs
+editor: visual
+---
+
+## Sources of Uncertainty
+
+There are three types of sources of uncertainty that commonly arise in infectious disease models:
+
+-   Parameter uncertainty
+-   Sampling uncertainty
+-   Process uncertainty
+
+## Parameter Uncertainty
+
+-   Parameter uncertainty reflects our uncertainty about the underlying process being modeled.
+-   This can include both uncertainty in the parameters and in the structure of the model itself
+    -   model structure uncertainty less often addressed
+-   Sampling over parameter values in the usual way to do this
+    -   systematic exploration
+    -   random sampling
+
+## Example: Systematic Exploration
+
+We are modeling the invasion of a new pathogen, but there is some uncertainty in $R_0$ (range 1.5-2.5) and the latent period (range 5-10 days).
+
+```{r, echo=TRUE}
+source("08_ModelCode.R")
+gamma <- 1/4 ## the 4 day infectious period is known.
+
+res <- NULL
+
+## Loop over values of R0 and latent period 
+for (R0 in seq(1.5,2.5, .1)) {
+  for (latent_period in 5:10) {
+      tmp <- run_seir(365, 
+                      c(S=9999,E=0,I=1,R=0),
+                      c(beta=R0*gamma, gamma=gamma, mu=0, delta=1/latent_period))
+      res <- tmp %>% mutate(run=paste(R0,latent_period,sep=","),
+                            R0=R0,latent_period=latent_period)%>%
+        bind_rows(res)
+  }
+}
+
+```
+
+## Example: Systematic Exploration
+
+```{r, echo=TRUE}
+res %>% filter(compartment=="Infected") %>% 
+  ggplot(aes(x=time, y=count, group=run)) + geom_line() 
+```
+
+## Example: Systematic Exploration
+
+```{r, echo=TRUE}
+res %>% filter(compartment=="Recovered") %>% group_by(run) %>% 
+  summarize(final_size=max(count)) %>% ggplot(aes(x=final_size)) + 
+  geom_histogram(binwidth = 100) + xlim(0,10000)
+```
+
+## Example: Random Sampling
+
+It is not actually the case that all values of R0 and the latent period are equally likely, in fact those represented ranges are 95% confidence intervals around $R_0 = 2$ and latent period of 7.5. $R_0$ (range 1.5-2.5) and the latent period (range 5-10 days).
+
+```{r, echo=TRUE}
+
+res2 <- list()
+
+## Pull 1000 samples from the ranges and run for each
+for (i in 1:1000) { 
+  R0 <- rnorm(1, 2, 1/1.96)
+  latent_period <- rnorm(1, 7.5, 2.5/1.96)
+  
+  tmp <- run_seir(365, 
+                  c(S=9999,E=0,I=1,R=0),
+                  c(beta=R0*gamma, gamma=gamma, mu=0, delta=1/latent_period))
+  res2[[i]] <- tmp %>% mutate(run=paste(R0,latent_period,sep=","),
+                        R0=R0,latent_period=latent_period)
+}
+
+res2 <- bind_rows(res2)
+
+```
+
+## Example: Random Exploration
+
+```{r, echo=TRUE}
+res2 %>% filter(compartment=="Infected") %>% 
+  ggplot(aes(x=time, y=count)) + geom_line(alpha=0.1,aes(group=run)) 
+```
+
+## Example: Random Sampling
+
+```{r, echo=TRUE}
+res2 %>% filter(compartment=="Recovered") %>% group_by(run) %>% 
+  summarize(final_size=max(count)) %>% ggplot(aes(x=final_size)) + 
+  geom_histogram(binwidth = 100) + xlim(0,10000)
+```
+
+## Sampling Uncertainty
+
+Sampling uncertainty represents uncertainty in the observation process. This is important because it reflects the noisy nature of the data we actually see.
+
+-   This is the same sort of uncertainty that your normal confidence intervals, etc. represent
+-   Also sometimes tied to explicit modeling of an observation process.
+-   Generally considered more important in the fitting than forward simulation process.
+
+## Sampling Uncertainty: Example
+
+Simulate data where each infected person has a 10% chance of visiting a clinic and being observed each day of their infection.
+
+```{r, echo=TRUE}
+
+##Simulate the baseline epidemic curve
+R0 <- 2
+gamma <- 1/4
+latent_period <- 4
+ec <-  run_seir(365, 
+                c(S=9999,E=0,I=1,R=0),
+                c(beta=R0*gamma, gamma=gamma, mu=0, delta=1/latent_period))
+
+
+## Sample to create clinic visits:
+obs <- ec %>% filter(compartment=="Infected") %>% 
+  mutate(compartment = "Observed", count=rpois(n(), count * 0.1))
+
+#bring together
+ec <- ec %>% bind_rows(obs)
+
+
+
+```
+
+## Sampling Uncertainty: Example
+
+```{r, echo=TRUE}
+
+ec %>% filter(compartment %in% c("Infected","Observed")) %>%
+  ggplot(aes(x=time, y=count, color=compartment)) + geom_line()
+
+
+```
+
+## Sampling Uncertainty: Example
+
+```{r}
+ 
+obs2 <- list()
+for (i in 1:1000) {
+    obs2[[i]] <-  ec %>% filter(compartment=="Infected") %>% 
+      mutate(compartment = "Observed", count=rpois(n(), count * 0.1),
+             run=i)
+}
+
+obs2 <- bind_rows(obs2)
+
+```
+
+```{r}
+
+
+
+obs2 %>% group_by(time) %>% 
+  summarize(med=median(count),
+            p_95=quantile(count, p=0.95),
+            p_05=quantile(count,p=0.05)) %>%
+  ggplot(aes(x=time, y=med)) + geom_line() + geom_ribbon(aes(ymin=p_05, ymax=p_95),alpha=0.1)
+```
+
+## Process Uncertainty
+
+Process uncertainty captures uncertainty in the actual process of the epidemic.
+
+-   Captures the fact that an epidemic is a random process
+-   Critical when the number infected is small, less so when big.
+-   Usually implemented using some sort of model that looks at discrete individuals
+-   **We will spend next week discussing implementation**
+
+## Process Uncertainty: Example 1
+
+Even for super critical pathogens (e.g., $R_0>1$) stochastic die out can be frequent. Let's look for $R_0=2$.
+
+```{r,echo=TRUE}
+
+##simulate 1000 epidemics. 
+sims <- list()
+
+for (i in 1:1000) {
+  sims[[i]] <- run_stoch_seir(325, c(S=999,E=0,I=1,R=0),
+                              c(beta=.5, gamma=1/4, delta=1/4),dt=.25) %>%
+    mutate(run=i)
+}
+
+sims <- bind_rows(sims)
+
+##calculate the final sizes
+final_sizes <- sims %>% group_by(run) %>% 
+  filter(compartment=="Recovered") %>%
+  summarize(sz = max(count))
+
+##get deterministic results for comparison
+determ_res <- run_seir(150, c(S=999,E=0,I=1,R=0),
+                              c(beta=.5, gamma=1/4, delta=1/4,mu=0))
+
+
+determ_final_sz <- max(filter(determ_res,compartment=="Recovered")$count)
+```
+
+## Process Uncertainty: Example
+
+```{r}
+
+final_sizes %>% ggplot(aes(x=sz)) +geom_histogram(binwidth = 10)+
+  theme_minimal() + geom_vline(xintercept=determ_final_sz, color="Red")
+
+```
+
+## Process Uncertainty: Example
+
+Epidemics also may start faster than expected of take longer to get going.
+
+```{r}
+tmp <- filter(determ_res, compartment=="Infected")
+
+sims %>% filter(compartment=="Infected") %>% 
+  ggplot(aes(x=time, y=count))+geom_line(alpha=0.05, aes(group=run))+
+  #geom_smooth() +
+  geom_line(data=tmp, color="red")
+  
+
+```
+
+## Process Uncertainty - When it Matters
+
+Process uncertainty becomes less important when we have more than a few infections.
+
+```{r,echo=TRUE}
+
+##simulate 100 epidemics. 
+sims2 <- list()
+
+for (i in 1:1000) {
+  sims2[[i]] <- run_stoch_seir(325, c(S=990,E=0,I=10,R=0),
+                              c(beta=.5, gamma=1/4, delta=1/4),dt=.25) %>%
+    mutate(run=i)
+}
+
+sims2 <- bind_rows(sims2)
+
+##calculate the final sizes
+final_sizes2 <- sims2 %>% group_by(run) %>% 
+  filter(compartment=="Recovered") %>%
+  summarize(sz = max(count))
+
+##get deterministic results for comparison
+determ_res2 <- run_seir(150, c(S=990,E=0,I=10,R=0),
+                              c(beta=.5, gamma=1/4, delta=1/4,mu=0))
+
+
+determ_final_sz2 <- max(filter(determ_res,compartment=="Recovered")$count)
+```
+
+## Process Uncertainty - When it Matters
+
+```{r}
+
+final_sizes2 %>% ggplot(aes(x=sz)) +geom_histogram(binwidth = 10)+
+  theme_minimal() + geom_vline(xintercept=determ_final_sz, color="Red")+
+  xlim(1,1000)
+
+```
+
+## Process Uncertainty - When it Matters
+
+```{r}
+tmp <- filter(determ_res2, compartment=="Infected")
+
+sims2 %>% filter(compartment=="Infected") %>% 
+  ggplot(aes(x=time, y=count))+geom_line(alpha=0.05, aes(group=run))+
+  #geom_smooth() +
+  geom_line(data=tmp, color="red")
+  
+
+```
+
+## Process Uncertainty - Subcritical Processes
+
+Stochastic models are particularly useful in understanding subcritical (i.e., $R<1$) diseases that are destined for extinction.
+
+```{r,echo=TRUE}
+
+##simulate 1000 epidemics. 
+sims3 <- list()
+
+for (i in 1:1000) {
+  sims3[[i]] <- run_stoch_seir(325, c(S=999,E=0,I=1,R=0),
+                              c(beta=.95/4, gamma=1/4, delta=1/4),dt=.25) %>%
+    mutate(run=i)
+}
+
+sims3 <- bind_rows(sims3)
+
+##calculate the final sizes
+final_sizes3 <- sims3 %>% group_by(run) %>% 
+  filter(compartment=="Recovered") %>%
+  summarize(sz = max(count))
+
+
+```
+
+## Process Uncertainty - Subcritical Processes
+
+```{r}
+
+final_sizes3 %>% ggplot(aes(x=sz)) +geom_histogram(binwidth = 10)+
+  theme_minimal() 
+
+```
