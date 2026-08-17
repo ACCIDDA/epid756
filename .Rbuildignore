@@ -1,0 +1,10 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.Rhistory$
+^\.git$
+^\.gitignore$
+^\.lintr$
+^\.github$
+^justfile$
+^data-raw$
+^\.quarto$

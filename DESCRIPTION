@@ -1,0 +1,24 @@
+Package: epid756
+Title: Infectious Disease Modeling Exercises and Materials
+Version: 0.1.0
+Authors@R: 
+    person("EPID", "756", email = "epid756@example.com", role = c("aut", "cre"))
+Description: Exercise scripts, solutions, and helper functions for EPID 756 Infectious Disease Modeling.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends: 
+    R (>= 3.5.0)
+Imports: 
+    data.table,
+    deSolve,
+    knitr,
+    rmarkdown,
+    tableone,
+    tidyverse
+Suggests: 
+    lintr,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

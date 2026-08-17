@@ -37,7 +37,8 @@ hist(x)
 
 We can also read in the same simulated dataset, run the same code and embed Table 1 to share with collaborators.
 ```{r}
-df <- readRDS(file.path("data", "simdata.rds"))
+data("simdata", package = "epid756")
+df <- simdata
 # load package (already installed) in order to use CreateTableOne function
 library(tableone)
 CreateTableOne(data = df,

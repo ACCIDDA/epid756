@@ -1,8 +1,10 @@
 
-#' load the core tidyverse libraries
-library(tidyverse)
+#' @title Review of the Tidyverse
 
-#### Simulating today's dataset ####
+library(tidyverse) # as usual, load the necessary libraries; tidyverse actually includes several packages
+
+#' @section Synthetic Data
+#' We will start out by creating a synthetic dataset
 
 set.seed(8675309) # set seed to reproduce the random-number-generator results
 
@@ -11,10 +13,9 @@ beta0 <- 2 # intercept on log-odds scale
 beta1 <- -0.05 # odds ratio on log scale
 beta2 <- 0.8 # odds ratio on log scale
 
-# simulating data as a tibble: a special type of data.frame in tidyverse
+#' simulating data in a tibble: a special type of data.frame in tidyverse
 df <- tibble(
-  # assigning IDs 1-1000 to each observation (per person)
-  id = 1:n,
+  id = seq_len(n), # assigning IDs 1-1000 to each observation (per person)
   # simulated population of older adults
   age = runif(n = n, min = 65, max = 90),
   # history of vaccination (1 if any/0 if none in prior 3 years)
@@ -51,9 +52,9 @@ table(df$vax_current, useNA = "always")
 # in each function, first argument always data.frame; subsequent arguments are for columns to operate on (using variable names); output always a new data frame
 
 select(df, vax_current) # subset based on columns (variables)
-filter(df, vax_current == 1) # subset based on rows (observations)
+filter(df, vax_current == TRUE) # subset based on rows (observations)
 arrange(df, age) # changes ordering of rows
-summarise(df, mean(vax_hx), mean(vax_current, na.rm = TRUE)) # reduces multiple values to a summary
+summarize(df, mean(vax_hx), mean(vax_current, na.rm = TRUE)) # reduces multiple values to a summary
 mutate(df, followup = ifelse(is.na(vax_current), TRUE, FALSE)) # create new columns (variables)
 group_by(df, vax_hx) # changes scope of subsequent functions: operate group-by-group instead of entire dataset
 
@@ -64,9 +65,9 @@ df %>% select(vax_current)
 # is the same as
 select(df, vax_current)
 
-df %>%
+df  %>%
   group_by(vax_current) %>%
-  summarise(n(), mean(vax_hx))
+  summarize(n(), mean(vax_hx))
 # is the same as
 summarise(group_by(df, vax_current), n(), mean(vax_hx))
 # goal of making code more efficient and readable, reduces need to create intermediate objects in workflow

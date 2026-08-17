@@ -26,6 +26,7 @@ There are three types of sources of uncertainty that commonly arise in infectiou
 We are modeling the invasion of a new pathogen, but there is some uncertainty in $R_0$ (range 1.5-2.5) and the latent period (range 5-10 days).
 
 ```{r, echo=TRUE}
+library(tidyverse)
 source("08_ModelCode.R")
 gamma <- 1/4 ## the 4 day infectious period is known.
 

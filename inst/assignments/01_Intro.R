@@ -26,8 +26,9 @@ hist(bigger_x)
 getwd()
 ?setwd
 
-#' [base::file.path()] is for making platform independent paths
-df <- readRDS(file.path("data", "simdata.rds"))
+#' Access dataset included with epid756 package
+data("simdata", package = "epid756")
+df <- simdata
 
 #' Now, review several functions for inspecting data:
 #' `?View`, `?names`, `?head`, `?tail`, `?nrow`, `?ncol`

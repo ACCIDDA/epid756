@@ -98,8 +98,8 @@ hist(beta1_hat, 20)
 ## Let's do an example with logistic regression
 
 # Input values
-n <- 1000 # sample size per simulation
-n_sims <- 1000 # number of simulations
+n <- 100 # sample size per simulation
+n_sims <- 100 # number of simulations
 beta0 <- 0.5 # intercept on odds scale
 beta <- c(1.2, 0.8, 2.3) # odds ratio for each covariate
 # indicator for whether variable is "c"ontinuous or "d"ichotomous
