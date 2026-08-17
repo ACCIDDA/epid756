@@ -4,6 +4,16 @@
 
 ---
 
+## Prerequisites & Setup
+
+Before installing the `epid756` package, make sure R and RStudio are installed on your machine:
+
+1. **Install R**: Download and install R (>= 3.5.0) from [CRAN Cloud](https://cloud.r-project.org/).
+2. **Install RStudio**: Download and install RStudio Desktop from the [Posit RStudio IDE Downloads Guide](https://docs.posit.co/ide/user/#rstudio-ide-oss-downloads).
+3. **Setup Guidance**: For step-by-step slides on setting up R and RStudio for this course, see the [Intro Slides](https://docs.google.com/presentation/d/1_0eno21uN9Do_9H7i6LBPrlLSlV2x8rk/?slide=id.p9#slide=id.p9).
+
+---
+
 ## Installation
 
 You can install `epid756` directly from GitHub using the `remotes` package:
@@ -71,12 +81,12 @@ head(simdata)
 
 ## Alternative: RStudio Git Checkout
 
-First, install RStudio per [Intro Slides](https://docs.google.com/presentation/d/1_0eno21uN9Do_9H7i6LBPrlLSlV2x8rk/?slide=id.p9#slide=id.p9).
+If you prefer to check out the repository directly using RStudio:
+1. Open RStudio and select **File -> New Project**.
+2. Select **Version Control**, then **Git**.
+3. Enter the Repository URL: `https://github.com/ACCIDDA/epid756`.
 
-Then use RStudio's "New Project" capability to check out this repository:
-1. Create a new project from Version Control.
-2. Select Git.
-3. Fill in the repository URL: `https://github.com/ACCIDDA/epid756`.
+For detailed visuals, see the [Intro Slides](https://docs.google.com/presentation/d/1_0eno21uN9Do_9H7i6LBPrlLSlV2x8rk/?slide=id.p9#slide=id.p9).
 
 ---
 
